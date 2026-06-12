@@ -14,11 +14,12 @@ space covers the proven archetypes. Tradeoffs taken deliberately:
 - **Transparency vs character** — separate modes, not a blend. Clean is
   mathematically exact; analog modes commit to their colorations.
 - **Latency vs aliasing suppression** — the default path is zero-latency;
-  the HQ 2x toggle buys 10–60 dB more alias suppression for exactly 43
-  samples of host-reported latency. Linear-phase FIR halfbands were chosen
-  over polyphase-allpass IIR because IIR phase rotation near Nyquist is
-  itself "unintended frequency warping"; the price is the higher latency,
-  paid only when HQ is on.
+  the HQ toggle buys 10–60 dB more alias suppression for host-reported
+  latency of exactly 43 samples (53 in FET/Opto, which run 4x — see
+  below). Linear-phase FIR halfbands were chosen over polyphase-allpass
+  IIR because IIR phase rotation near Nyquist is itself "unintended
+  frequency warping"; the price is the higher latency, paid only when HQ
+  is on.
 - **Model accuracy vs CPU** — behavioral models (published time-constant
   topologies + static curves with ADAA), not SPICE/WDF circuit simulation
   or neural networks, which blow the real-time budget for sub-audible
@@ -55,6 +56,21 @@ space covers the proven archetypes. Tradeoffs taken deliberately:
   transition 20→28 kHz at 48 k, design computed at prepare time, never
   hardcoded). Round trip exactly 43 base-rate samples at any rate; the dry
   leg passes an identical resampler pair so mix never combs.
+- HQ in FET/Opto runs **4x**: these are feedback topologies (the detector
+  taps the previous output sample), so sidechain and signal path are one
+  serial loop — the whole loop is oversampled by a second cascaded
+  halfband stage (110 dB, transition 5/24 of the 4x rate, N = 39: only
+  spurs folding into the stage-1 passband need full attenuation; the rest
+  is killed by the stage-1 downsampler). The stage-2 round trip is 19
+  samples at 2fs, padded +1 to an integer 10 base samples → 53 total.
+  The dry leg takes the matching pure 20-sample delay at 2fs instead of
+  re-filtering (the stage-2 pair is passband-flat to ~1e-5 dB; mix-leg
+  flatness verified at 50%). Latency is therefore mode-dependent under
+  HQ and the host is re-notified on mode changes.
+- Resampler FIRs run as ascending dot products over contiguous history
+  buffers (taps stored reversed) — auto-vectorizable; this paid for the
+  4x stage: every HQ mode got faster than the ring-buffer build it
+  replaced.
 - Zero allocation in `process()`; all buffers sized in `prepare()`.
   Denormals flushed (FPCR FZ) identically in plugin and harness.
 
@@ -112,16 +128,17 @@ Attack/Release (fixed T4 program). Vari-Mu rescales into 2–100 ms /
 rate. T4 slow-stage release uses linear coefficient interpolation between
 the 0.5 s and 4 s coefficients (model definition; avoids per-sample exp).
 
-## Verified guarantees (harness-enforced, all pass as of 2026-06-11)
+## Verified guarantees (harness-enforced, all pass as of 2026-06-12)
 
 **Structural** — bit-identical repeatability, reset cleanliness, and
 block-size invariance (partitions 1/64/333/4096) for all 5 modes × HQ
 on/off × 48k/96k.
 
 **Frequency response** — ±0.05 dB, 20 Hz–20 kHz, all modes, mix 100% and
-50%, HQ on/off, both rates (worst measured ~0.01 dB). Latency: 0 samples
+50%, HQ on/off, both rates (worst measured ~0.004 dB). Latency: 0 samples
 base (measured 0.000), 43 samples HQ (measured 43.000 by sinc-interpolated
-cross-correlation, reported value matches).
+cross-correlation, reported value matches), 53 samples HQ in FET/Opto
+(measured 53.000 for both, reported value matches).
 
 **Time constants** — Clean attack/release t63 within 10% of dialed; VCA
 15% (incl. RMS lag); FET release 25% of the dual-TC analytic value, attack
@@ -142,8 +159,14 @@ HQ × rates.
 | Clean | −97 | −114 | −114 | −134 | −90 / −110 |
 | VCA | −102 | −150 | −150 | −173 | −70 / −90 |
 | Vari-Mu | −86 | −167 | −153 | −162 | −70 / −90 |
-| Opto | −73 | −85 | −84 | −91 | −70 / −83 |
-| FET | −59 | −70 | −70 | −80 | −55 / −65 |
+| Opto | −73 | −92 | −84 | −91 | −70 / −88 |
+| FET | −59 | −80 | −69 | −86 | −55 / −75 |
+
+(FET/Opto HQ figures are the 4x cascade, measured 2026-06-12: 48k HQ
+improved −70 → −79.6 and −85 → −92.0 dBc respectively. The observed gain
+is ≈10 dB per doubling of the loop rate; reaching −90 dBc in FET at 48k
+would need 8–16x, which the 96k+HQ CPU budget does not buy. That is the
+real ceiling of this topology at this budget, not a defect.)
 
 Deviations from the original −120 (clean) / −90 (analog HQ) aspirations
 are physical, not implementation defects: sampled peak-hold ballistics

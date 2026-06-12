@@ -24,11 +24,13 @@ TouchstoneProcessor::TouchstoneProcessor()
     pLearn      = apvts.getRawParameterValue (tsp::id::learn);
 
     apvts.addParameterListener (tsp::id::hq, this);
+    apvts.addParameterListener (tsp::id::mode, this); // FET/Opto run 4x under HQ -> latency differs by mode
 }
 
 TouchstoneProcessor::~TouchstoneProcessor()
 {
     apvts.removeParameterListener (tsp::id::hq, this);
+    apvts.removeParameterListener (tsp::id::mode, this);
     cancelPendingUpdate();
 }
 
@@ -43,7 +45,11 @@ bool TouchstoneProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
 
 int TouchstoneProcessor::currentLatencySamples() const
 {
-    return engine.latencySamples (pHq != nullptr && pHq->load() > 0.5f);
+    const bool hqOn = pHq != nullptr && pHq->load() > 0.5f;
+    const auto mode = pMode != nullptr
+                    ? static_cast<refcomp::Mode> (int (pMode->load() + 0.5f))
+                    : refcomp::Mode::Clean;
+    return engine.latencySamples (hqOn, mode);
 }
 
 void TouchstoneProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
@@ -126,7 +132,7 @@ void TouchstoneProcessor::setStateInformation (const void* data, int sizeInBytes
 
 void TouchstoneProcessor::parameterChanged (const juce::String& parameterID, float)
 {
-    if (parameterID == tsp::id::hq)
+    if (parameterID == tsp::id::hq || parameterID == tsp::id::mode)
         triggerAsyncUpdate(); // setLatencySamples must come from the message thread
 }
 

@@ -6,11 +6,24 @@
 //   Engine<float,  FastMath>     — the shipping path
 // All buffers are allocated in prepare(); process() never allocates.
 //
+// HQ oversampling factor is mode-dependent: FET and Opto are feedback
+// topologies (detector taps the previous OUTPUT sample), so sidechain
+// and signal path form one serial loop — there is no separable
+// sidechain to oversample on its own. Under HQ those two modes run the
+// whole loop at 4x via a second cascaded halfband stage; every other
+// mode stays at 2x and the base path stays zero-latency.
+//
 // Alignment guarantees (so mix < 100% never combs):
 //   - base rate: residual-form ADAA passes the linear term with zero
 //     delay (see ADAA.h), so wet/dry are sample-aligned in every mode.
-//   - HQ: wet runs up->process->down; the dry leg runs through an
+//   - HQ 2x: wet runs up->process->down; the dry leg runs through an
 //     identical resampler pair, so both legs see the same group delay.
+//   - HQ 4x: the wet stage-2 round trip is centre2 samples at 2fs (odd,
+//     i.e. a half base sample), padded by +1 sample at 2fs to land on
+//     an integer base-rate latency. The dry leg takes a pure
+//     (centre2 + 1)-sample delay at 2fs instead of re-filtering: the
+//     stage-2 pair is passband-flat to ~1e-5 dB, verified by the mix
+//     50% frequency-response checks.
 
 #include "Common.h"
 #include "MathOps.h"
@@ -63,16 +76,22 @@ public:
         fs       = sampleRate;
         maxBlock = maxBlockSize;
 
-        hbSpec = hbdesign::design();
+        hbSpec  = hbdesign::design();
+        hbSpec2 = hbdesign::design2();
         for (int c = 0; c < kMaxCh; ++c)
         {
-            up[c].prepare (hbSpec);     down[c].prepare (hbSpec);
-            upDry[c].prepare (hbSpec);  downDry[c].prepare (hbSpec);
+            up[c].prepare (hbSpec, maxBlock);     down[c].prepare (hbSpec, maxBlock);
+            upDry[c].prepare (hbSpec, maxBlock);  downDry[c].prepare (hbSpec, maxBlock);
+            up2[c].prepare (hbSpec2, 2 * maxBlock);
+            down2[c].prepare (hbSpec2, 2 * maxBlock);
+            wetPad2[c].prepare (1, 2 * maxBlock);
+            dryDelay2[c].prepare (hbSpec2.centre + 1, 2 * maxBlock);
             dryBuf[c].assign (size_t (maxBlock), S (0));
             osBuf[c].assign (size_t (2 * maxBlock), S (0));
+            os2Buf[c].assign (size_t (4 * maxBlock), S (0));
             osDryBuf[c].assign (size_t (2 * maxBlock), S (0));
         }
-        grTapOs.assign (size_t (2 * maxBlock), S (0));
+        grTapOs.assign (size_t (4 * maxBlock), S (0));
 
         driveRamp.prepare (fs, 10.0);
         makeupRamp.prepare (fs, 10.0);
@@ -94,6 +113,7 @@ public:
         {
             hpf[c].reset();
             up[c].reset(); down[c].reset(); upDry[c].reset(); downDry[c].reset();
+            up2[c].reset(); down2[c].reset(); wetPad2[c].reset(); dryDelay2[c].reset();
             dryAvgPrev[c] = S (0);
         }
         flawsBlock.reset();
@@ -110,6 +130,7 @@ public:
             for (int c = 0; c < kMaxCh; ++c)
             {
                 up[c].reset(); down[c].reset(); upDry[c].reset(); downDry[c].reset();
+                up2[c].reset(); down2[c].reset(); wetPad2[c].reset(); dryDelay2[c].reset();
                 hpf[c].reset();
                 dryAvgPrev[c] = S (0);
             }
@@ -117,8 +138,17 @@ public:
         applyTargets (false);
     }
 
-    // Reported host latency. Constant per HQ state, independent of mode.
-    int latencySamples (bool hqOn) const { return hqOn ? hbSpec.centre : 0; }
+    // Reported host latency. Base path is always 0. Under HQ, FET/Opto
+    // pay the extra stage-2 round trip: (centre2 + 1)/2 base samples
+    // (the +1 is the wet-leg pad that makes the total integer).
+    static bool uses4x (Mode m) { return m == Mode::FET || m == Mode::Opto; }
+
+    int latencySamples (bool hqOn, Mode m) const
+    {
+        if (! hqOn)
+            return 0;
+        return hbSpec.centre + (uses4x (m) ? (hbSpec2.centre + 1) / 2 : 0);
+    }
 
     // Test hook: per-sample gain reduction (dB) for the last block.
     void setGrTap (S* buf) { grTap = buf; }
@@ -158,7 +188,8 @@ public:
         }
 
         const bool   hq    = params.hq;
-        const double fsEff = hq ? 2.0 * fs : fs;
+        const int    osf   = hq ? (uses4x (params.mode) ? 4 : 2) : 1;
+        const double fsEff = double (osf) * fs;
 
         // Per-block control updates (cheap; keeps automation responsive).
         double thr = double (params.thresholdDb);
@@ -183,7 +214,7 @@ public:
         {
             dispatch (ch, numCh, n, grTap);
         }
-        else
+        else if (osf == 2)
         {
             S* osPtrs[kMaxCh] = {};
             for (int c = 0; c < numCh; ++c)
@@ -205,6 +236,39 @@ public:
             for (int c = 0; c < numCh; ++c)
             {
                 upDry[c].process (dryBuf[c].data(), osDryBuf[c].data(), n);
+                downDry[c].process (osDryBuf[c].data(), dryBuf[c].data(), n);
+            }
+        }
+        else // osf == 4: FET/Opto run the whole feedback loop at 4x.
+        {
+            S* osPtrs[kMaxCh] = {};
+            for (int c = 0; c < numCh; ++c)
+            {
+                up[c].process (ch[c], osBuf[c].data(), n);
+                up2[c].process (osBuf[c].data(), os2Buf[c].data(), 2 * n);
+                osPtrs[c] = os2Buf[c].data();
+            }
+
+            dispatch (osPtrs, numCh, 4 * n, grTap != nullptr ? grTapOs.data() : nullptr);
+
+            for (int c = 0; c < numCh; ++c)
+            {
+                down2[c].process (os2Buf[c].data(), osBuf[c].data(), 2 * n);
+                wetPad2[c].process (osBuf[c].data(), 2 * n); // +1 at 2fs -> integer base latency
+                down[c].process (osBuf[c].data(), ch[c], n);
+            }
+
+            if (grTap != nullptr)
+                for (int i = 0; i < n; ++i)
+                    grTap[i] = grTapOs[size_t (4 * i)];
+
+            // Dry leg: stage-1 pair plus a pure (centre2 + 1)-sample
+            // delay at 2fs standing in for the passband-flat stage-2
+            // round trip (see header comment).
+            for (int c = 0; c < numCh; ++c)
+            {
+                upDry[c].process (dryBuf[c].data(), osDryBuf[c].data(), n);
+                dryDelay2[c].process (osDryBuf[c].data(), 2 * n);
                 downDry[c].process (osDryBuf[c].data(), dryBuf[c].data(), n);
             }
         }
@@ -321,11 +385,12 @@ private:
     TptHighpass<double> hpf[kMaxCh];
     AnalogFlaws<S> flawsBlock;
 
-    hbdesign::Spec hbSpec;
-    HalfbandUpsampler<S>   up[kMaxCh],   upDry[kMaxCh];
-    HalfbandDownsampler<S> down[kMaxCh], downDry[kMaxCh];
+    hbdesign::Spec hbSpec, hbSpec2;
+    HalfbandUpsampler<S>   up[kMaxCh],   upDry[kMaxCh], up2[kMaxCh];
+    HalfbandDownsampler<S> down[kMaxCh], downDry[kMaxCh], down2[kMaxCh];
+    BlockDelay<S>          wetPad2[kMaxCh], dryDelay2[kMaxCh];
 
-    std::vector<S> dryBuf[kMaxCh], osBuf[kMaxCh], osDryBuf[kMaxCh], grTapOs;
+    std::vector<S> dryBuf[kMaxCh], osBuf[kMaxCh], os2Buf[kMaxCh], osDryBuf[kMaxCh], grTapOs;
     S dryAvgPrev[kMaxCh] {};
 
     LinearRamp<S> driveRamp, makeupRamp, mixRamp;

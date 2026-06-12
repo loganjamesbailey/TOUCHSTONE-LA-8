@@ -88,7 +88,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (hpfText)));
 
     layout.add (std::make_unique<BoolParam> (
-        juce::ParameterID { id::hq, 1 }, "HQ (2x)", false));
+        juce::ParameterID { id::hq, 1 }, "HQ", false)); // 2x oversampling; 4x in FET/Opto
 
     layout.add (std::make_unique<BoolParam> (
         juce::ParameterID { id::analogflaws, 1 }, "Analog Character", false));

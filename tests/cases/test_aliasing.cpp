@@ -148,15 +148,18 @@ std::vector<TestResult> run (const Config& cfg)
                     // (sampled peak-hold ballistics regenerate folding
                     // control-signal harmonics; FET additionally carries
                     // its hardware-true 20-800 us feedback attack).
+                    // FET/Opto run 4x under HQ (full feedback loop), so
+                    // their HQ limits tightened from -65/-83 to -75/-88
+                    // (measured floors -79.6 / -91.0 dBc).
                     double limit;
                     if (extreme)
                         limit = hq ? -45.0 : -40.0;
                     else if (m == Mode::Clean || m == Mode::Voice)
                         limit = hq ? -110.0 : -90.0;
                     else if (m == Mode::FET)
-                        limit = hq ? -65.0 : -55.0;
+                        limit = hq ? -75.0 : -55.0;
                     else if (m == Mode::Opto)
-                        limit = hq ? -83.0 : -70.0;
+                        limit = hq ? -88.0 : -70.0;
                     else
                         limit = hq ? -90.0 : -70.0;
 
