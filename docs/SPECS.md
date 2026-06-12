@@ -172,6 +172,28 @@ chosen so a 32-track session stays under half a core) and ≥25x at 96k+HQ
 **Hosts** — auval passes; pluginval strictness 10 passes for AU and VST3.
 Mono→mono and stereo→stereo buses. State round-trips via APVTS XML.
 
+## Control language
+
+Plain language primary, engineering term as the secondary marking — the
+original hardware convention (LA-2A "Leveling Amplifier", broadcast
+"Recovery Time"); the jargon is later drift. Parameter IDs never change;
+only display names.
+
+| ID | Display name | Engineering term (marking) |
+|---|---|---|
+| threshold | Grab Point | threshold (Voice GUI: Target) |
+| ratio | Strength | ratio, detents 2:1/4:1/8:1/max |
+| attack | Reaction | attack (grab speed) |
+| release | Recovery | release |
+| knee | Ease-In | knee (Voice GUI: Window) |
+| makeup | Output | makeup gain |
+| schpf | Listen Filter | sidechain HPF |
+
+GUI spec additions: gain meter labeled in plain terms ("turning down N
+dB"); loudness-matched bypass (A/B at equal loudness — unmatched bypass
+is the main source of compressor self-deception); "Trigger Source"
+reserved for the external sidechain (v2).
+
 ## Known limitations (v1)
 
 - Generic JUCE editor (per scope); no custom GUI, presets, AAX, Windows.
