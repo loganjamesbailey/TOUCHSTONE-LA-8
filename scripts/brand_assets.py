@@ -20,7 +20,7 @@ BLACK, PAPER = "#0B0B0D", "#F5F4EF"
 GREEN, BLUE, PINK = "#3DFB7E", "#35A6FF", "#FF2E9D"
 R_STONE = 12
 
-OUT = os.path.join(os.path.dirname(__file__), '..', 'site', 'assets')
+OUT = os.path.join(os.path.dirname(__file__), '..', 'docs', 'assets')
 
 # ---------------- the mark ----------------
 m = (S - a1) / 2
