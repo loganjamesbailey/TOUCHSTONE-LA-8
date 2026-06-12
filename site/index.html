@@ -138,12 +138,22 @@
 
 <section>
   <h2>Install</h2>
+  <p><strong>The easy way.</strong> Paste this in Terminal. It downloads and
+  installs both plugin formats — no admin password, no security warnings.</p>
+  <p><code style="display:block; padding:10px 12px; overflow-x:auto;">/bin/sh -c "$(curl -fsSL https://REPO_URL_HERE/raw/main/scripts/install.sh)"</code></p>
+  <p style="margin-top:16px;"><strong>The manual way.</strong></p>
   <ol>
     <li>Download and unzip.</li>
     <li>Copy <code>Touchstone.component</code> to <code>~/Library/Audio/Plug-Ins/Components/</code></li>
     <li>Copy <code>Touchstone.vst3</code> to <code>~/Library/Audio/Plug-Ins/VST3/</code></li>
     <li>Restart your DAW. In Logic Pro: Audio Units &gt; JamesBailey &gt; Touchstone.</li>
   </ol>
+  <p class="muted">Manual downloads may trigger a macOS warning that the
+  developer can't be verified — that's because this release isn't notarized
+  with Apple yet, not because anything is wrong with it. Approve it under
+  System Settings &gt; Privacy &amp; Security &gt; "Open Anyway", or use the
+  Terminal install above, which avoids the warning entirely. You can also
+  build from source; everything you need is in the repository.</p>
 </section>
 
 <footer>
