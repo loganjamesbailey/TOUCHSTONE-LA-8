@@ -7,10 +7,10 @@
 # install path until releases are notarized.
 #
 # Usage (one line, from the website):
-#   /bin/sh -c "$(curl -fsSL https://REPO_URL_HERE/raw/main/scripts/install.sh)"
+#   /bin/sh -c "$(curl -fsSL https://github.com/loganjamesbailey/TOUCHSTONE-LA-8/raw/main/scripts/install.sh)"
 set -eu
 
-URL="https://REPO_URL_HERE/releases/latest/download/Touchstone-macOS.zip"
+URL="https://github.com/loganjamesbailey/TOUCHSTONE-LA-8/releases/latest/download/Touchstone-macOS.zip"
 
 echo "Touchstone installer"
 TMP=$(mktemp -d)
