@@ -17,8 +17,8 @@ PHI = (1 + 5**0.5) / 2
 S = 100.0
 a1, a2, a3, a4, a5, a6 = [S / PHI**n for n in range(1, 7)]
 
-BLACK, PAPER = "#050505", "#F5F4EF"
-GREEN, BLUE, PINK = "#0BE60B", "#0A78FF", "#FF2E9D"
+BLACK, PAPER = "#0B0B0D", "#F5F4EF"
+GREEN, BLUE, PINK = "#3DFB7E", "#35A6FF", "#FF2E9D"
 R_STONE = 12
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'site', 'assets')
@@ -28,21 +28,15 @@ m = (S - a1) / 2
 barY = m
 strokeW = a5
 
-# Wave per JB artwork: base wider than the bar, tall bell, pressed crown.
-waveHalf = 35.0          # base half-width (70 wide vs bar 61.8)
-tailY    = 78.0          # tail centerline
-shoulderY = 36.5         # crown shoulders
-crownY   = 38.3          # pressed centre of the crown
-
+# Wave: phi-cascade bell — width = bar width (a1), apex height a2, no
+# ornament. Matched stroke weights give identical margins on all sides.
 def wave_path():
-    xl, xr = 50 - waveHalf, 50 + waveHalf
-    return (f"M{xl:.2f},{tailY:.2f} "
-            f"C{xl+9:.2f},{tailY:.2f} {38:.2f},{58:.2f} {43:.2f},{42:.2f} "
-            f"C{44.6:.2f},{37.6:.2f} {46:.2f},{shoulderY:.2f} {48:.2f},{shoulderY:.2f} "
-            f"C{49:.2f},{shoulderY:.2f} {49:.2f},{crownY:.2f} {50:.2f},{crownY:.2f} "
-            f"C{51:.2f},{crownY:.2f} {51:.2f},{shoulderY:.2f} {52:.2f},{shoulderY:.2f} "
-            f"C{54:.2f},{shoulderY:.2f} {55.4:.2f},{37.6:.2f} {57:.2f},{42:.2f} "
-            f"C{62:.2f},{58:.2f} {xr-9:.2f},{tailY:.2f} {xr:.2f},{tailY:.2f}")
+    apexY = barY + a5 + a6 + strokeW / 2
+    baseY = apexY + a2
+    xl, xr = m, S - m
+    return (f"M{xl:.3f},{baseY:.3f} "
+            f"C{xl+12:.3f},{baseY:.3f} {50-12:.3f},{apexY:.3f} 50,{apexY:.3f} "
+            f"C{50+12:.3f},{apexY:.3f} {xr-12:.3f},{baseY:.3f} {xr:.3f},{baseY:.3f}")
 
 def mark(keyline=False):
     kl = f' stroke="{BLUE}" stroke-width="1.2"' if keyline else ''
