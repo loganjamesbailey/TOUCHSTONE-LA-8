@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Touchstone — the dynamics processor that proves it</title>
+<meta name="description" content="A free, open-source AU/VST3 dynamics processor for macOS. Five classic compressor modes and Voice — an effort-leveling vocal engine. Every claim measured; the measurements ship with the code.">
+<style>
+  :root {
+    --panel: #E8E6DF; --panel2: #F1EFE8; --line: #B4B2A9; --line2: #D3D1C7;
+    --ink: #2C2C2A; --ink2: #5F5E5A; --ink3: #888780;
+    --green: #3B6D11; --green2: #639922;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--panel2); color: var(--ink);
+         font: 16px/1.65 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+  header { padding: 72px 0 40px; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+         background: var(--green2); margin-right: 12px; }
+  h1 { font-size: 28px; font-weight: 500; letter-spacing: 0.16em; display: inline; }
+  .tag { margin-top: 18px; font-size: 20px; color: var(--ink2); max-width: 560px; }
+  .cta { margin: 36px 0 0; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .btn { display: inline-block; padding: 13px 26px; border-radius: 6px; text-decoration: none;
+         font-size: 15px; border: 1px solid var(--ink); }
+  .btn.primary { background: var(--ink); color: var(--panel); border-bottom: 3px solid #1a1a18; }
+  .btn.ghost { color: var(--ink); border-bottom: 3px solid var(--line); background: var(--panel); }
+  .meta { font-size: 13px; color: var(--ink3); }
+  section { padding: 36px 0; border-top: 1px solid var(--line2); }
+  h2 { font-size: 19px; font-weight: 500; margin-bottom: 14px; letter-spacing: 0.04em; }
+  p + p { margin-top: 12px; }
+  .muted { color: var(--ink2); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }
+  .card h3 { font-size: 14px; font-weight: 500; letter-spacing: 0.08em; }
+  .card p { font-size: 13.5px; color: var(--ink2); margin-top: 6px; line-height: 1.55; }
+  .card.voice { border: 1px solid var(--green); }
+  .card.voice h3 { color: var(--green); }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line2); }
+  th { font-weight: 500; color: var(--ink2); font-size: 12.5px; letter-spacing: 0.06em; }
+  td.num { font-variant-numeric: tabular-nums; }
+  code { background: var(--panel); border: 1px solid var(--line2); border-radius: 4px;
+         padding: 1px 6px; font-size: 13.5px; }
+  ol { margin: 12px 0 0 22px; }
+  ol li { margin-bottom: 6px; }
+  footer { padding: 40px 0 64px; border-top: 1px solid var(--line2);
+           font-size: 13px; color: var(--ink3); }
+  footer a { color: var(--ink2); }
+  a { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div><span class="dot"></span><h1>TOUCHSTONE</h1></div>
+  <p class="tag">The dynamics processor that proves it. Five classic compressors
+  and one thing nobody else makes — free, open source, for macOS.</p>
+  <div class="cta">
+    <a class="btn primary" href="DOWNLOAD_URL_HERE">Download for macOS</a>
+    <a class="btn ghost" href="REPO_URL_HERE">Source &amp; measurements</a>
+    <span class="meta">AU + VST3 · macOS 11+ · Apple Silicon &amp; Intel · v1.2.0 · AGPL-3.0</span>
+  </div>
+</header>
+
+<section>
+  <h2>Voice mode is not a compressor</h2>
+  <p>A compressor levels voltage. Voice mode holds the three things a great
+  engineer rides by hand: <strong>level</strong> — a bidirectional rider that
+  lifts quiet phrases and catches loud ones inside a window you choose;
+  <strong>effort</strong> — pushed singing is spectrally different from soft
+  singing, and the Intimacy control pulls a pushed take back toward
+  close-quiet-singing character at full level, or leans a timid take forward;
+  and <strong>distance</strong> — it knows whether a bass swell means you
+  leaned into your dynamic mic or just room on a condenser, and rides it out.</p>
+  <p class="muted">It learns your voice's baseline, freezes it when you say so,
+  and saves the profile with your session — so it behaves identically on every
+  playback pass.</p>
+</section>
+
+<section>
+  <h2>Six modes</h2>
+  <div class="grid">
+    <div class="card voice"><h3>VOICE</h3><p>Outcome-defined vocal engine: level window, effort shaping, mic-aware distance stabilization.</p></div>
+    <div class="card"><h3>CLEAN</h3><p>Mathematically exact digital compression. Flat to ±0.05 dB, zero latency, nothing you didn't ask for.</p></div>
+    <div class="card"><h3>FET</h3><p>1176-class feedback topology. 20–800 µs attacks, ratio detents 4/8/12/20/All, program-dependent release.</p></div>
+    <div class="card"><h3>OPTO</h3><p>LA-2A-class T4 cell with light memory: the two-stage release and the glue.</p></div>
+    <div class="card"><h3>VARI-MU</h3><p>Fairchild-class progressive ratio — leans in harder as you push it. Slow, deep, transformer-flavoured.</p></div>
+    <div class="card"><h3>VCA</h3><p>dbx/SSL-class RMS detection. Literal controls, near-clean, punchy.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Every claim is measured</h2>
+  <p class="muted">Most plugins make claims. Touchstone ships a 186-check
+  verification harness with its source code; the release is gated on every
+  number below. Measured on Apple M1, 48 kHz / 96 kHz.</p>
+  <table>
+    <tr><th>Claim</th><th>Measured</th></tr>
+    <tr><td>Frequency response (any mode, any mix)</td><td class="num">flat ±0.05 dB to 20 kHz</td></tr>
+    <tr><td>Latency, base / HQ 2x</td><td class="num">exactly 0 / 43 samples, reported honestly</td></tr>
+    <tr><td>Optimized path vs double-precision reference</td><td class="num">residual ≤ −137 dBFS</td></tr>
+    <tr><td>Aliasing under 25 dB gain reduction (Clean)</td><td class="num">≤ −97 dBc (−114 with HQ)</td></tr>
+    <tr><td>Voice rider conformance to its published law</td><td class="num">0.5 dB median, on real singing</td></tr>
+    <tr><td>CPU, worst mode, 48 kHz stereo</td><td class="num">328x realtime (≤ 0.4% of one core)</td></tr>
+    <tr><td>Processing when bypassed-by-settings</td><td class="num">bit-exact passthrough</td></tr>
+  </table>
+  <p class="meta" style="margin-top:10px;">Full guarantees and the honest
+  ceilings — including where physics sets limits no sampled compressor can
+  beat — are documented in SPECS.md in the repository.</p>
+</section>
+
+<section>
+  <h2>Install</h2>
+  <ol>
+    <li>Download and unzip.</li>
+    <li>Copy <code>Touchstone.component</code> to <code>~/Library/Audio/Plug-Ins/Components/</code></li>
+    <li>Copy <code>Touchstone.vst3</code> to <code>~/Library/Audio/Plug-Ins/VST3/</code></li>
+    <li>Restart your DAW. In Logic Pro: Audio Units &gt; JamesBailey &gt; Touchstone.</li>
+  </ol>
+</section>
+
+<footer>
+  <p>Touchstone by James Bailey. Free software under the
+  <a href="REPO_URL_HERE/blob/main/LICENSE">GNU AGPL-3.0</a> — the source,
+  the test harness, and every measurement are public. Built with
+  <a href="https://juce.com">JUCE</a>.</p>
+</footer>
+
+</div>
+</body>
+</html>
