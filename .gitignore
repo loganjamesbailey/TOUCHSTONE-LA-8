@@ -1,0 +1,5 @@
+build/
+build-release/
+dist/
+tools/
+.DS_Store
