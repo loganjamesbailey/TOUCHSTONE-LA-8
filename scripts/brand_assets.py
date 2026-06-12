@@ -8,8 +8,7 @@
 # Geometry: golden-ratio cascade from the 100-unit stone (a_n = 100/phi^n):
 #   a1 bar width / a2 wave height zone / a5 bar+wave stroke / a6 gap.
 # Corners: stone r12 (macOS-window style, straight sides) per art
-# direction 2026-06-12. Wave: bell silhouette with a pressed crown,
-# matched to JB's artwork. Colors: full-saturation neon on black.
+# direction 2026-06-12. Wave: plain phi-cascade bell, width = bar width.
 
 import math, os, sys, urllib.request
 
