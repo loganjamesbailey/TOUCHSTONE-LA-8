@@ -1,6 +1,6 @@
-# Touchstone
+# Touchstone LA-8
 
-A reference-grade dynamics processor for macOS (AU + VST3), built around one
+A leveling amplifier for macOS (AU + VST3), built around one
 idea: **every claim is measured, and the measurements ship with the code.**
 
 Six modes:
