@@ -1,5 +1,6 @@
 build/
 build-release/
 dist/
-tools/
+tools/pluginval*
+auditions/**/*.wav
 .DS_Store

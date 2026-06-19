@@ -17,3 +17,4 @@ FetchContent_MakeAvailable(JUCE)
 
 add_subdirectory(plugin)
 add_subdirectory(tests)
+add_subdirectory(tools/render)
