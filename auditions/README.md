@@ -46,15 +46,19 @@ Mic Profile difference far more clearly than the synthetic spread does.
 ## The A/B protocol (so the verdict means something)
 
 1. **Loudness-match first.** Unmatched bypass is the main source of
-   compressor self-deception — the louder file always "sounds better." The
-   classics are rendered with auto-makeup for a fair sit; for Voice, the
-   rider IS the makeup. Trim by ear or by LUFS so A and B are equal-loud
-   before judging tone.
+   compressor self-deception — the louder file always "sounds better."
+   `tools/audio_analysis/normalize.py <target_lufs> <ceiling_dbtp> <files>`
+   does a linear-gain match (no limiting) to a common LUFS with a true-peak
+   ceiling — run it on a render set before A/B so every file is equal-loud
+   and nothing clips. `measure.py <file>` reports LUFS/true-peak/spectral.
 2. **The headline comparisons:**
    - *Does Voice level without pumping?* — `source` vs `voice_*_int000`
      (Intimacy 0 = leveling only, no spectral counter-shaping).
-   - *What does Intimacy actually do?* — sweep `int000 → int100` on one Mic
-     Profile. You should hear effort/harshness tamed, not the vowel changed.
+   - *What does Intimacy do?* — sweep `int000 → int100` on one Mic Profile.
+     Intimacy is a **warm-and-close** control: higher = rolled-off top,
+     a touch more low-mid body, harshness tamed when the take pushes —
+     articulation (≈1–2 kHz) is left intact so it stays present, not muffled.
+     (Measured on a real vocal: centroid drops ~24%, top −3.5 dB, 0→100.)
    - *Mic Profile* — same Intimacy, swap `dynClose / condClose / condFar`.
      Listen for proximity boom being stabilized, strongest on dynClose.
    - *Classics character* — `clean` (invisible) vs `fet` (fast, aggressive)
