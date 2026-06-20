@@ -222,7 +222,7 @@ struct TopologyVoice
             aTilt[c].setCutoff (1200.0, fsEff);
             aBreath[c].setCutoff (7000.0, fsEff);
             aProx[c].setCutoff (130.0, fsEff); // aligned with the 0-120 Hz detector band
-            aShout[c].set (3000.0, 1.2, fsEff);
+            aShout[c].set (3000.0, 0.8, fsEff); // wider band -> covers more of the 1.6-4.5k shout region
         }
     }
 
@@ -316,16 +316,23 @@ struct TopologyVoice
             const double g = gainLp.process (M::dbToLinD (gTotal));
 
             // ---------- effort / distance filter gains ----------
-            // darken > 0 means tilt the output darker (counter the push)
-            const double darkenDb = std::min (8.0, std::max (-8.0, 0.9 * dEs * intimacy));
-            const double shoutDb  = std::min (5.0, std::max (-10.0, -0.8 * std::max (0.0, dEs) * intimacy));
-            const double breathFloor = clamp01 ((Lmac + 42.0) / 12.0); // 0 below -42, 1 above -30
-            const double breathDb = breathFloor
-                                  * std::min (6.0, std::max (-4.0,  0.5 * std::max (0.0, -dEs) * intimacy));
+            // Intimacy = WARM + CLOSE (positive direction). It tilts warm (the
+            // 1.2 kHz pivot lifts low-mids, drops the top) with a DIRECTIONAL
+            // baseline plus extra taming when the singer pushes (dEs > 0) — so
+            // it never brightens quiet passages, and pushed takes get pulled
+            // toward intimate/close. The 7 kHz shelf now gently CUTS air with
+            // intimacy (it used to LIFT it, which read bright — the opposite
+            // of the goal). Negative intimacy is the inverse (brighter/forward).
+            const double warmDb  = std::min (8.0, std::max (-8.0,
+                                       intimacy * (3.0 + 0.8 * std::max (0.0, dEs))));
+            const double shoutDb = std::min (4.0, std::max (-16.0,
+                                       -intimacy * (2.0 + 2.2 * std::max (0.0, dEs))));
+            const double breathDb = std::min (4.0, std::max (-6.0,
+                                       -intimacy * (1.3 + 0.5 * std::max (0.0, dEs))));
             const double proxDb   = std::min (8.0, std::max (-8.0, -2.5 * micStrength * strength * dPs));
 
-            const double tTiltLp = M::dbToLinD ( 0.5 * darkenDb);
-            const double tTiltHp = M::dbToLinD (-0.5 * darkenDb);
+            const double tTiltLp = M::dbToLinD ( 0.5 * warmDb);
+            const double tTiltHp = M::dbToLinD (-0.5 * warmDb);
             const double tShout  = M::dbToLinD (shoutDb);
             const double tBreath = M::dbToLinD (breathDb);
             const double tProx   = M::dbToLinD (proxDb);
