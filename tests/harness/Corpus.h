@@ -53,6 +53,7 @@ inline const char* modeName (refcomp::Mode m)
         case refcomp::Mode::VariMu: return "varimu";
         case refcomp::Mode::VCA:    return "vca";
         case refcomp::Mode::Voice:  return "voice";
+        case refcomp::Mode::Optimal: return "optimal";
     }
     return "?";
 }

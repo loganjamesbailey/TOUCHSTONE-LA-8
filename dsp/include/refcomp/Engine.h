@@ -36,6 +36,7 @@
 #include "TopologyOpto.h"
 #include "TopologyVariMu.h"
 #include "TopologyVoice.h"
+#include "TopologyOptimal.h"
 
 #include <vector>
 #include <atomic>
@@ -43,7 +44,7 @@
 namespace refcomp
 {
 
-enum class Mode : int { Clean = 0, FET = 1, Opto = 2, VariMu = 3, VCA = 4, Voice = 5 };
+enum class Mode : int { Clean = 0, FET = 1, Opto = 2, VariMu = 3, VCA = 4, Voice = 5, Optimal = 6 };
 
 struct Parameters
 {
@@ -93,6 +94,11 @@ public:
         }
         grTapOs.assign (size_t (4 * maxBlock), S (0));
 
+        optimal.prepare (fs, maxBlock);
+        optimalLatencyBase = optimal.latency();
+        for (int c = 0; c < kMaxCh; ++c)
+            optimalDry[c].prepare (optimalLatencyBase, maxBlock);
+
         driveRamp.prepare (fs, 10.0);
         makeupRamp.prepare (fs, 10.0);
         mixRamp.prepare (fs, 10.0);
@@ -109,11 +115,12 @@ public:
     void reset()
     {
         clean.reset(); fet.reset(); opto.reset(); vca.reset(); variMu.reset(); voice.reset();
+        optimal.reset();
         for (int c = 0; c < kMaxCh; ++c)
         {
             hpf[c].reset();
             up[c].reset(); down[c].reset(); upDry[c].reset(); downDry[c].reset();
-            up2[c].reset(); down2[c].reset(); wetPad2[c].reset(); dryDelay2[c].reset();
+            up2[c].reset(); down2[c].reset(); wetPad2[c].reset(); dryDelay2[c].reset(); optimalDry[c].reset();
             dryAvgPrev[c] = S (0);
         }
         flawsBlock.reset();
@@ -127,10 +134,11 @@ public:
         if (modeChanged || hqChanged)
         {
             clean.reset(); fet.reset(); opto.reset(); vca.reset(); variMu.reset(); voice.reset();
+            optimal.reset();
             for (int c = 0; c < kMaxCh; ++c)
             {
                 up[c].reset(); down[c].reset(); upDry[c].reset(); downDry[c].reset();
-                up2[c].reset(); down2[c].reset(); wetPad2[c].reset(); dryDelay2[c].reset();
+                up2[c].reset(); down2[c].reset(); wetPad2[c].reset(); dryDelay2[c].reset(); optimalDry[c].reset();
                 hpf[c].reset();
                 dryAvgPrev[c] = S (0);
             }
@@ -145,6 +153,9 @@ public:
 
     int latencySamples (bool hqOn, Mode m) const
     {
+        // Optimal runs at base rate with a fixed lookahead, regardless of HQ.
+        if (m == Mode::Optimal)
+            return optimalLatencyBase;
         if (! hqOn)
             return 0;
         return hbSpec.centre + (uses4x (m) ? (hbSpec2.centre + 1) / 2 : 0);
@@ -187,7 +198,8 @@ public:
             voice.refsInit = true;
         }
 
-        const bool   hq    = params.hq;
+        // Optimal is feedforward with smooth gain — it runs at base rate (no HQ).
+        const bool   hq    = params.hq && params.mode != Mode::Optimal;
         const int    osf   = hq ? (uses4x (params.mode) ? 4 : 2) : 1;
         const double fsEff = double (osf) * fs;
 
@@ -281,13 +293,23 @@ public:
             flawsBlock.process (wet, numCh, n);
         }
 
+        // Optimal introduces lookahead latency on the wet path; delay the dry
+        // copy to match so mix < 100% (parallel) stays phase-aligned.
+        if (params.mode == Mode::Optimal)
+            for (int c = 0; c < numCh; ++c)
+                optimalDry[c].process (dryBuf[c].data(), n);
+
         // Mix and makeup (wet only — dry stays untouched for parallel use).
+        // Optimal applies makeup INSIDE the topology, ceiling-aligned, so its
+        // post-makeup output stays <= Tlin by construction; don't reapply here.
+        const bool optimalMode = params.mode == Mode::Optimal;
         for (int i = 0; i < n; ++i)
         {
-            const S mk = makeupRamp.next();
+            const S mk = makeupRamp.next();                 // advance ramp regardless
+            const S mkUse = optimalMode ? S (1) : mk;
             const S mx = mixRamp.next();
             for (int c = 0; c < numCh; ++c)
-                ch[c][i] = ch[c][i] * mk * mx + dryBuf[c][size_t (i)] * (S (1) - mx);
+                ch[c][i] = ch[c][i] * mkUse * mx + dryBuf[c][size_t (i)] * (S (1) - mx);
         }
 
         pubERef.store (voice.eRef, std::memory_order_relaxed);
@@ -333,6 +355,7 @@ private:
             case Mode::Opto:   return 3.5;
             case Mode::VariMu: return 0.5 * (2.0 + double (params.ratio));
             case Mode::Voice:  return 1.0; // the rider IS the makeup
+            case Mode::Optimal: return 1.0; // limiter: reduction is the action
             default:           return double (params.ratio);
         }
     }
@@ -354,6 +377,14 @@ private:
             case Mode::Voice:  voice.update  (thr, ratio, att, rel, knee, fsEff,
                                               double (params.intimacy), params.mic,
                                               params.learnHold); break;
+            case Mode::Optimal:
+            {
+                // Fold makeup into the ceiling so the post-makeup output is
+                // bounded (auto-makeup is inert for Optimal: nominalRatio()==1).
+                const double mkLin = std::pow (10.0, double (params.makeupDb) / 20.0);
+                optimal.update (thr, ratio, att, rel, knee, fsEff, mkLin);
+                break;
+            }
         }
     }
 
@@ -367,11 +398,13 @@ private:
             case Mode::VariMu: variMu.processBlock (x, numCh, n, hpf, tap); break;
             case Mode::VCA:    vca.processBlock    (x, numCh, n, hpf, tap); break;
             case Mode::Voice:  voice.processBlock  (x, numCh, n, hpf, tap); break;
+            case Mode::Optimal: optimal.processBlock (x, numCh, n, hpf, tap); break;
         }
     }
 
     double fs = 48000.0;
     int maxBlock = 0;
+    int optimalLatencyBase = 0;
     bool prepared = false;
     Parameters params;
 
@@ -381,6 +414,7 @@ private:
     TopologyVariMu<S, M> variMu;
     TopologyVCA<S, M>    vca;
     TopologyVoice<S, M>  voice;
+    TopologyOptimal<S, M> optimal;
 
     TptHighpass<double> hpf[kMaxCh];
     AnalogFlaws<S> flawsBlock;
@@ -389,6 +423,7 @@ private:
     HalfbandUpsampler<S>   up[kMaxCh],   upDry[kMaxCh], up2[kMaxCh];
     HalfbandDownsampler<S> down[kMaxCh], downDry[kMaxCh], down2[kMaxCh];
     BlockDelay<S>          wetPad2[kMaxCh], dryDelay2[kMaxCh];
+    BlockDelay<S>          optimalDry[kMaxCh]; // delays dry by the Optimal lookahead so mix<100% aligns
 
     std::vector<S> dryBuf[kMaxCh], osBuf[kMaxCh], os2Buf[kMaxCh], osDryBuf[kMaxCh], grTapOs;
     S dryAvgPrev[kMaxCh] {};

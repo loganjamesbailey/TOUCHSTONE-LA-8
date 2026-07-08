@@ -37,7 +37,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
 
     layout.add (std::make_unique<ChoiceParam> (
         juce::ParameterID { id::mode, 1 }, "Mode",
-        juce::StringArray { "Clean", "FET", "Opto", "Vari-Mu", "VCA", "Voice" }, 0));
+        juce::StringArray { "Clean", "FET", "Opto", "Vari-Mu", "VCA", "Voice", "Optimal" }, 0));
 
     layout.add (std::make_unique<FloatParam> (
         juce::ParameterID { id::threshold, 1 }, "Grab Point",

@@ -10,6 +10,7 @@ add_executable(refcomp_tests
     cases/test_cpu_bench.cpp
     cases/test_flaws.cpp
     cases/test_voice.cpp
+    cases/test_optimal.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/kissfft/kiss_fft.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/kissfft/kiss_fftr.c)
 

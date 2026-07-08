@@ -84,6 +84,7 @@ space covers the proven archetypes. Tradeoffs taken deliberately:
 | Vari-Mu | RMS 10 ms | progressive r(o) = 1+(rMax−1)·o/(o+12) | branching one-pole, attack 2–100 ms, release 0.1–5 s | 0.95, 0.16 + LF drive term |
 | VCA | RMS 5 ms | literal ratio/knee | branching one-pole, literal | 0.45, 0 |
 | Voice | see below | rider law (below) | slew-limited bidirectional | none |
+| Optimal | peak (true sample) | hard ceiling g ≤ c_n | receding-horizon QP (MPC) | none |
 
 ### Voice mode (outcome-defined vocal dynamics)
 
@@ -127,6 +128,42 @@ Attack/Release (fixed T4 program). Vari-Mu rescales into 2–100 ms /
 0.1–5 s. Minimum effective attack everywhere: 2 samples at the engine
 rate. T4 slow-stage release uses linear coefficient interpolation between
 the 0.5 s and 4 s coefficients (model definition; avoids per-sample exp).
+
+### Optimal mode (lookahead MPC limiter)
+
+A lookahead/feedforward limiter whose gain trajectory is the solution of a
+receding-horizon quadratic program (model-predictive control), not a ballistics
+recursion. Per sample the ceiling is `c_n = min(1, T_lin/|x|_peak)` (true sample
+peak); the gain is
+
+    g = argmin  Σ (g − c_n)² + λ·Σ(Δg)²    subject to    0 ≤ g ≤ c_n
+
+solved by a tridiagonal active-set method (`GainSolverQP.h`) over a 3 ms window,
+re-solving every ~1 ms and committing the lookahead. The box constraint is the
+**hard peak guarantee**: |output| ≤ T_lin at every sample, by construction, even
+when the fixed-iteration (8-sweep) solve has not fully converged — non-convergence
+costs smoothness, never the ceiling.
+
+`λ` (the Σ(Δg)² term) is **J_0, a modulation-energy / smoothness regularizer — a
+conditioning penalty only, with NO perceptual claim attached**. It is driven by
+Recovery (longer recovery → smoother gain). Grab Point = ceiling; Strength /
+Ease-In / Reaction are reserved (the QP, not a ratio, defines the law). The mode
+runs at base rate only (the gain is smooth, so the multiply needs no alias
+suppression); HQ is ignored. Latency is a fixed lookahead of `round(3 ms · fs)`
+base samples (144 at 48 k, 288 at 96 k), reported to the host and re-notified on
+mode change; the dry path is delay-matched so mix < 100% (parallel) stays aligned.
+
+Optimal guarantees (harness-enforced, `test_optimal`, both rates): hard ceiling
+exact (peak-over-threshold 0.000 dB); block-size invariant (partitions
+1/64/333/4096, base and parallel-mix); optimized-vs-scalar null ≤ −153 dBFS
+(measured −156/−153, inside the strict tier); reported latency exact.
+**Engineering result, not a perceptual claim:** at matched 4 dB mean gain
+reduction on a dense 48-carrier complex, Optimal's 2–8 Hz gain-modulation depth
+is 2.1 dB below the VCA broadband compressor (−35.3 vs −33.1 dB re 20·log₁₀ m) —
+it pumps measurably less than an accepted broadband compressor at equal
+reduction. Audibility of that difference is unestablished (the TMTF detection
+floor for 2–8 Hz is ≈ −25 dB; both sit below it on this material); it ships as a
+transparency refinement, not a perceptual proxy.
 
 ## Verified guarantees (harness-enforced, all pass as of 2026-06-12)
 
@@ -226,3 +263,7 @@ reserved for the external sidechain (v2).
   (FET: ≥19 = all-buttons).
 - Emulation accuracy is conformance to published behavioral specs, not a
   hardware null test (no units on the bench).
+- Optimal mode v1: base rate only (HQ ignored); fixed 3 ms lookahead (not
+  automatable, prepare-time constant); Strength/Ease-In/Reaction reserved; not
+  included in the analog null/aliasing tables (it is feedforward with a smooth
+  gain — its own gates live in `test_optimal`).
